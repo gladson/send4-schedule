@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use Validator;
 use Illuminate\Http\Request;
+
 use App\Message;
 
 class MessagesController extends Controller
@@ -20,8 +22,17 @@ class MessagesController extends Controller
          */
         public function index()
         {
-            //return $this->messages->all();
-            return $this->messages->with('contact')->get();
+            try {
+                if ($this->messages->exists()) {
+                    return $this->messages->with('contact')->get();
+                } else {
+                    return response()->json(['error'=>'Não foi encontrado.'], 404);
+                }
+            } catch (\Exception $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            } catch (\Throwable $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 417);
+            }
         }
 
 
@@ -31,10 +42,29 @@ class MessagesController extends Controller
           * @param  \Illuminate\Http\Request  $request
           * @return \Illuminate\Http\Response
           */
-         public function store(Request $request)
-         {
-             return $this->messages->create($request->all());
-         }
+        public function store(Request $request)
+        {
+            try {
+                $messages = [
+                    'contact_id.exists' => 'Contato não foi encontrado.',
+                ];
+
+                $validator = Validator::make($request->all(), [
+                    'contact_id' => 'required|exists:contacts,id',
+                    'message' => 'required',
+                ], $messages);
+                if ($validator->fails()) {
+                    return response()->json(['error'=>$validator->errors()], 401);
+                } else {
+                    $save_message = $this->messages->create($request->all());
+                    return $this->messages->whereId($save_message->id)->with('contact')->get();
+                }
+            } catch (\Exception $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            } catch (\Throwable $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 417);
+            }
+        }
 
          /**
           * Display the specified resource.
@@ -44,7 +74,13 @@ class MessagesController extends Controller
           */
          public function show($id)
          {
-             return $this->messages->find($id)->with('contact')->get();
+            try {
+                return $this->messages->findOrfail($id)->whereId($id)->with('contact')->get();
+            } catch (\Exception $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            } catch (\Throwable $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 417);
+            }
          }
 
 
@@ -57,8 +93,26 @@ class MessagesController extends Controller
           */
          public function update(Request $request, $id)
          {
-             return $this->messages->whereId($id)->update($request->all());
-             return $this->messages->with('contact')->get();
+             try {
+                $messages = [
+                    'contact_id.exists' => 'Contato não foi encontrado.',
+                ];
+                $validator = Validator::make($request->all(), [
+                    'contact_id' => 'required|exists:contacts,id',
+                    'message' => 'required',
+                ], $messages);
+                if ($validator->fails()) {
+                    return response()->json(['error'=>$validator->errors()], 401);
+                } else {
+                    $this->messages->whereId($id)->update($request->all());
+                    return $this->messages->findOrfail($id)->with('contact')->get();
+                }
+
+            } catch (\Exception $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            } catch (\Throwable $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 417);
+            }
          }
 
          /**
@@ -69,7 +123,13 @@ class MessagesController extends Controller
           */
          public function destroy($id)
          {
-             $this->messages->find($id)->delete();
-             return $this->messages->with('contact')->get();
+            try {
+                $this->messages->findOrfail($id)->delete();
+                return response()->json(['success'=>'Deletado com sucesso.'], 410);
+            } catch (\Exception $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            } catch (\Throwable $ex) {
+                return response()->json(['error'=>'Não foi encontrado.'], 417);
+            }
          }
 }

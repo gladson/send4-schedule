@@ -23,7 +23,15 @@ class ContactsController extends Controller
     public function index()
     {
         //return $this->contacts->all();
-        return $this->contacts->with('messages')->get();
+        try {
+            if ($this->contacts->with('messages')->exists()) {
+                return $this->contacts->with('messages')->get();
+            }
+        } catch (\Exception $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 404);
+        } catch (\Throwable $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 417);
+        }
     }
 
 
@@ -35,19 +43,23 @@ class ContactsController extends Controller
       */
     public function store(Request $request)
     {
-
-        $validator = Validator::make($request->all(), [
-            'firstname' => 'required',
-            'lastname' => 'required',
-            'email' => 'required|email',
-            'phonenumber' => 'required',
-        ]);
-        if ($validator->fails()) {
-            return response()->json(['error'=>$validator->errors()], 401);
-        } else {
-            return $this->contacts->create($request->all());
+        try {
+            $validator = Validator::make($request->all(), [
+                'firstname' => 'required',
+                'lastname' => 'required',
+                'email' => 'required|email',
+                'phonenumber' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json(['error'=>$validator->errors()], 401);
+            } else {
+                return $this->contacts->create($request->all());
+            }
+        } catch (\Exception $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 404);
+        } catch (\Throwable $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 417);
         }
-
     }
 
      /**
@@ -58,7 +70,6 @@ class ContactsController extends Controller
       */
     public function show($id)
     {
-
         try {
             return $this->contacts->findOrfail($id);
         } catch (\Exception $ex) {
@@ -66,7 +77,6 @@ class ContactsController extends Controller
         } catch (\Throwable $ex) {
             return response()->json(['error'=>'Não foi encontrado.'], 417);
         }
-
     }
 
 
@@ -79,8 +89,29 @@ class ContactsController extends Controller
       */
     public function update(Request $request, $id)
     {
-        $this->contacts->whereId($id)->update($request->all());
-        return $this->contacts->with('messages')->get();
+
+        try {
+
+            $validator = Validator::make($request->all(), [
+                'firstname' => 'required',
+                'lastname' => 'required',
+                'email' => 'required|email',
+                'phonenumber' => 'required',
+            ]);
+            if ($validator->fails()) {
+                return response()->json(['error'=>$validator->errors()], 401);
+            } else {
+                //$this->contacts->where('id', $id)->update($request->all());
+                $this->contacts->whereId($id)->update($request->all());
+                return $this->contacts->findOrfail($id);
+            }
+
+        } catch (\Exception $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 404);
+        } catch (\Throwable $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 417);
+        }
+
     }
 
      /**
@@ -89,11 +120,20 @@ class ContactsController extends Controller
       * @param  int  $id
       * @return \Illuminate\Http\Response
       */
-     public function destroy($id)
-     {
-         $this->contacts->find($id)->delete();
-         return $this->contacts->with('messages')->get();
-     }
+    public function destroy($id)
+    {
+        try {
+
+            $this->contacts->findOrfail($id)->delete();
+            return response()->json(['success'=>'Deletado com sucesso.'], 410);
+
+        } catch (\Exception $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 404);
+        } catch (\Throwable $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 417);
+        }
+
+    }
 
 
      /**
@@ -101,11 +141,18 @@ class ContactsController extends Controller
       *
       * @return \Illuminate\Http\Response
       */
-      public function messages($id)
-      {
-          return $this->contacts->find($id)->messages;
-      }
-
-
-
+    public function messages($id)
+    {
+        try {
+            if (!$this->contacts->find($id)->messages->isEmpty()) {
+                return $this->contacts->findOrfail($id)->messages;
+            } else {
+                return response()->json(['error'=>'Não foi encontrado.'], 404);
+            }
+        } catch (\Exception $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 404);
+        } catch (\Throwable $ex) {
+            return response()->json(['error'=>'Não foi encontrado.'], 417);
+        }
+    }
 }
